@@ -890,6 +890,12 @@ export async function createRoomAction(formData: FormData) {
   const competitionId = formData.get("competitionId") ? String(formData.get("competitionId")) : null;
   const accessCode = await createUniqueRoomAccessCode();
   const configPreset = parsed.data.configPreset as RoomConfigPreset;
+  // CUSTOM respeta los mercados marcados en el paso de revision; el resto usa su preset.
+  const customMarkets = parseEnabledMarkets(formData.getAll("market"));
+  const enabledMarkets =
+    configPreset === "CUSTOM" && customMarkets.length > 0
+      ? customMarkets
+      : marketsForPreset(configPreset);
 
   const room = await prisma.room.create({
     data: {
@@ -915,7 +921,7 @@ export async function createRoomAction(formData: FormData) {
       ruleSet: {
         create: {
           preset: configPreset,
-          enabledMarkets: marketsForPreset(configPreset),
+          enabledMarkets,
         },
       },
       leaderboardEntries: {
