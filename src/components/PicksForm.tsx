@@ -138,7 +138,6 @@ export function PicksForm({
     const deadline = deadlineMap[match.stage];
     const peerPicksVisible = match.peerPicksVisible ?? canViewPeerPredictions(deadline);
     const availableBonusMarkets = bonusMarketsForStage(roomMarkets, match.stage);
-    const hasBonusAnswers = Object.keys(marketAnswers[match.id] ?? {}).length > 0;
 
     return (
       <div className={isVisible ? "match-day-entry" : "match-day-entry is-hidden"} key={match.id}>
@@ -165,7 +164,7 @@ export function PicksForm({
             />
           ) : null}
           {isVisible && availableBonusMarkets.length > 0 ? (
-            <details className="picks-market-details" open={hasBonusAnswers || undefined}>
+            <details className="picks-market-details">
               <summary>
                 <span>Bonus opcionales</span>
                 <small>{availableBonusMarkets.length} selecciones</small>

@@ -2812,6 +2812,144 @@ input:disabled {
   }
 }
 
+/* ── Leaderboard rank list ─────────────────────────── */
+
+.rank-gap {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.rank-you-tag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 16%, var(--panel));
+  color: var(--primary);
+  font-size: 0.62rem;
+  font-weight: 800;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+.rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rank-row {
+  display: grid;
+  grid-template-columns: 28px 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.rank-row:nth-child(odd) {
+  background: var(--panel-soft);
+}
+
+.rank-row.is-you {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--line));
+  background: color-mix(in srgb, var(--primary) 8%, var(--panel));
+}
+
+.rank-pos {
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.rank-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 14%, var(--panel));
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.rank-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rank-identity strong {
+  font-size: 0.94rem;
+  overflow-wrap: anywhere;
+}
+
+.rank-preds {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+  color: var(--muted);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.rank-preds b {
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.rank-points {
+  min-width: 64px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 12%, var(--panel));
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .rank-row {
+    grid-template-columns: 20px 32px minmax(0, 1fr) auto auto;
+    gap: 7px;
+    padding: 9px 7px;
+  }
+
+  .rank-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.88rem;
+  }
+
+  .rank-preds {
+    font-size: 0.58rem;
+  }
+
+  .rank-preds b {
+    font-size: 0.92rem;
+  }
+
+  .rank-points {
+    min-width: 0;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+}
+
 /* ── Admin Redesign ────────────────────────────────── */
 
 .admin-competition-grid {
@@ -3798,6 +3936,11 @@ input:disabled {
     color: var(--primary) !important;
     border-bottom: none !important;
     background: transparent !important;
+  }
+
+  /* La barra de navegacion fija de la sala (60px) tapa el boton de guardar; lo subimos encima. */
+  .room-picks-page .sticky-actions {
+    bottom: calc(60px + 14px);
   }
 }
 
