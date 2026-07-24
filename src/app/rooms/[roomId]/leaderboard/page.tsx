@@ -15,19 +15,28 @@ export default async function RoomLeaderboardPage({
   const { room, membership } = await requireRoomMembership(roomId, user.id);
   const canManage = membership.role === "OWNER" || membership.role === "ADMIN";
 
-  const entries = await prisma.roomLeaderboardEntry.findMany({
-    where: { roomId },
-    include: { user: { select: { displayName: true } } },
-    orderBy: [{ totalPoints: "desc" }, { predictionCount: "desc" }, { userId: "asc" }],
-  });
+  const [entries, hitGroups] = await Promise.all([
+    prisma.roomLeaderboardEntry.findMany({
+      where: { roomId },
+      include: { user: { select: { displayName: true } } },
+      orderBy: [{ totalPoints: "desc" }, { predictionCount: "desc" }, { userId: "asc" }],
+    }),
+    // Aciertos = pronosticos que sumaron puntos (mas relevante que el total de pronosticos).
+    prisma.prediction.groupBy({
+      by: ["userId"],
+      where: { roomId, points: { gt: 0 } },
+      _count: { _all: true },
+    }),
+  ]);
 
-  const roleByUserId = new Map(room.members.map((member) => [member.userId, member.role]));
+  const hitsByUserId = new Map(hitGroups.map((group) => [group.userId, group._count._all]));
+  const leaderPoints = entries[0]?.totalPoints ?? 0;
   const rows = entries.map((entry) => ({
     id: entry.userId,
     name: entry.user.displayName,
-    role: roleByUserId.get(entry.userId) ?? "MEMBER",
-    predictions: entry.predictionCount,
+    hits: hitsByUserId.get(entry.userId) ?? 0,
     points: entry.totalPoints,
+    gap: leaderPoints - entry.totalPoints,
   }));
 
   const podiumRows = rows.slice(0, 3);
@@ -57,12 +66,19 @@ export default async function RoomLeaderboardPage({
           <div className="podium">
             {podiumRows.map((row, index) => {
               const place = index + 1;
+              const isYou = row.id === user.id;
               return (
                 <div key={row.id} className={`podium-place podium-place-${place}`}>
-                  <div className="podium-card">
+                  <div className={`podium-card${isYou ? " is-you" : ""}`}>
                     {place === 1 && <Trophy className="podium-trophy" size={20} />}
-                    <strong className="podium-name">{row.name}</strong>
-                    <span className="podium-meta">{row.predictions} pronosticos</span>
+                    <strong className="podium-name">
+                      {row.name}
+                      {isYou ? <em className="rank-you-tag">tú</em> : null}
+                    </strong>
+                    <span className="podium-meta">
+                      {place === 1 ? "Líder de la sala" : `${row.gap} pts del líder`}
+                    </span>
+                    <span className="podium-meta">{row.hits} aciertos</span>
                     <span className="podium-points">{row.points} pts</span>
                   </div>
                   <div className="podium-block">
@@ -74,32 +90,31 @@ export default async function RoomLeaderboardPage({
           </div>
 
           {restRows.length > 0 && (
-            <div className="panel">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Participante</th>
-                    <th>Rol</th>
-                    <th>Pronosticos</th>
-                    <th>Puntos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {restRows.map((row, index) => (
-                    <tr key={row.id}>
-                      <td>{index + 4}</td>
-                      <td>{row.name}</td>
-                      <td>{row.role}</td>
-                      <td>{row.predictions}</td>
-                      <td>
-                        <strong>{row.points}</strong>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ol className="rank-list panel">
+              {restRows.map((row, index) => {
+                const isYou = row.id === user.id;
+                return (
+                  <li key={row.id} className={`rank-row${isYou ? " is-you" : ""}`}>
+                    <span className="rank-pos">{index + 4}</span>
+                    <span className="rank-avatar" aria-hidden="true">
+                      {row.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="rank-identity">
+                      <strong>
+                        {row.name}
+                        {isYou ? <em className="rank-you-tag">tú</em> : null}
+                      </strong>
+                      <span className="rank-gap">{row.gap} pts del líder</span>
+                    </span>
+                    <span className="rank-preds">
+                      <b>{row.hits}</b>
+                      aciertos
+                    </span>
+                    <span className="rank-points">{row.points} pts</span>
+                  </li>
+                );
+              })}
+            </ol>
           )}
         </>
       )}
