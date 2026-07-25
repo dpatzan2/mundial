@@ -1,11 +1,15 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 export function TopLoadingBar() {
   const pathname = usePathname();
-  const prevPathname = useRef(pathname);
+  const searchParams = useSearchParams();
+  // Navegar entre competencias solo cambia el query (?competition=...), no el pathname;
+  // seguimos la URL completa para que finish() dispare tambien en esos casos.
+  const url = `${pathname}?${searchParams}`;
+  const prevPathname = useRef(url);
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   const tickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,12 +69,12 @@ export function TopLoadingBar() {
   }, []);
 
   useEffect(() => {
-    if (pathname !== prevPathname.current) {
-      prevPathname.current = pathname;
+    if (url !== prevPathname.current) {
+      prevPathname.current = url;
       finish();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [url]);
 
   useEffect(() => () => clearTimers(), []);
 

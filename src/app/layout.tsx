@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Trophy } from "lucide-react";
 import "./globals.css";
 import { getCurrentUser } from "@/lib/auth";
@@ -40,7 +41,9 @@ export default async function RootLayout({
         `}} />
       </head>
       <body>
-        <TopLoadingBar />
+        <Suspense fallback={null}>
+          <TopLoadingBar />
+        </Suspense>
         <div className="app-shell">
           {user ? (
             <>
