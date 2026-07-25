@@ -1460,7 +1460,11 @@ export async function saveRoomPredictionsAction(
       }
 
       // Sync market answers (only write to DB on change or deletion)
-      for (const market of bonusMarketsForStage(enabledMarkets, match.stage)) {
+      // Los partidos de otra fecha/fase no renderizan sus bonus, asi que el form no los trae;
+      // sin este guard cada guardado borraba los bonus del resto de partidos.
+      const marketsInForm = formData.has(`marketsShown:${match.id}`);
+
+      for (const market of marketsInForm ? bonusMarketsForStage(enabledMarkets, match.stage) : []) {
         const value = readMarketValue(formData, market, match.id);
         const existingKey = `${match.id}:${market}`;
         const existingAnswer = answerByMatchAndMarket.get(existingKey);

@@ -81,6 +81,9 @@ export function RoomMarketFields({
 
   return (
     <div className="room-market-fields">
+      {/* Marca que este partido si trae sus bonus en el form; sin esto el server no puede
+          distinguir "sin pick" de "campos no renderizados" y borraria lo guardado. */}
+      <input type="hidden" name={`marketsShown:${match.id}`} value="1" />
       {groups.map((group) => {
         const items = definitions.filter((definition) => definition.group === group);
         if (items.length === 0) return null;
