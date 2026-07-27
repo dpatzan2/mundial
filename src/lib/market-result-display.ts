@@ -20,6 +20,21 @@ function goalRange(total: number) {
   return "6+";
 }
 
+// Mercados que salen solos del marcador final. PredictionResultSummary los prefiere sobre
+// cualquier valor guardado, asi que capturarlos a mano en el admin no cambia nada.
+export const derivedMarkets: RoomMarketKey[] = [
+  "TOTAL_GOALS",
+  "EXACT_TOTAL_GOALS",
+  "OVER_UNDER_2_5",
+  "ODD_EVEN_TOTAL_GOALS",
+  "BOTH_TEAMS_SCORE",
+  "DOUBLE_CHANCE",
+  "TEAM_TOTAL_GOALS",
+  "CLEAN_SHEET",
+  "WIN_TO_NIL",
+  "WIN_MARGIN",
+];
+
 export function derivedMarketResult(
   market: RoomMarketKey,
   match: DisplayMatch,
