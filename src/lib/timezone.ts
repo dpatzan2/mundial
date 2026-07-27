@@ -13,6 +13,22 @@ export function parseAppDateTime(value: string | null | undefined) {
   return new Date(`${normalized}-06:00`);
 }
 
+/** Valor para <input type="datetime-local"> en hora de Guatemala; inverso de parseAppDateTime. */
+export function toAppDateTimeInput(date: Date | null | undefined) {
+  if (!date) return "";
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: APP_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(date)
+    .replace(" ", "T");
+}
+
 export function formatAppDateTime(date: Date) {
   return new Intl.DateTimeFormat(APP_LOCALE, {
     timeZone: APP_TIMEZONE,

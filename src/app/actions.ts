@@ -723,27 +723,51 @@ export async function deleteCompetitionPhaseAction(formData: FormData) {
   redirect(`/admin/${competitionId}?tab=phases&deleted=phase`);
 }
 
-export async function updateCompetitionPhaseRulesAction(formData: FormData) {
+export async function updateCompetitionPhaseAction(formData: FormData) {
   await requireAdmin();
   const schema = z.object({
     id: z.string().trim().min(1),
     competitionId: z.string().trim().min(1),
+    name: z.string().trim().min(2).max(100),
+    stage: z
+      .enum(["GROUP", "ROUND_OF_32", "ROUND_OF_16", "QUARTER_FINAL", "SEMIFINAL", "THIRD_PLACE", "FINAL"])
+      .optional(),
+    format: z.enum(["GROUP", "KNOCKOUT", "LEAGUE"]),
+    sortOrder: z.coerce.number().int().min(0).max(999),
+    groupCode: z.string().trim().max(12).optional(),
     automaticQualifiers: z.coerce.number().int().min(0).max(64),
     bestThirdQualifiers: z.coerce.number().int().min(0).max(64),
+    startsAt: z.string().trim().optional(),
+    endsAt: z.string().trim().optional(),
   });
+  const rawStage = String(formData.get("stage") ?? "");
   const parsed = schema.safeParse({
     id: String(formData.get("id") ?? ""),
     competitionId: String(formData.get("competitionId") ?? ""),
+    name: String(formData.get("name") ?? ""),
+    stage: rawStage || undefined,
+    format: String(formData.get("format") ?? "GROUP"),
+    sortOrder: formData.get("sortOrder") ?? "0",
+    groupCode: String(formData.get("groupCode") ?? ""),
     automaticQualifiers: formData.get("automaticQualifiers") ?? "0",
     bestThirdQualifiers: formData.get("bestThirdQualifiers") ?? "0",
+    startsAt: String(formData.get("startsAt") ?? ""),
+    endsAt: String(formData.get("endsAt") ?? ""),
   });
   if (!parsed.success) redirect("/admin?error=phase-rules");
 
   await prisma.competitionPhase.update({
     where: { id: parsed.data.id },
     data: {
+      name: parsed.data.name,
+      stage: parsed.data.stage ?? null,
+      format: parsed.data.format as CompetitionPhaseFormat,
+      sortOrder: parsed.data.sortOrder,
+      groupCode: parsed.data.groupCode || null,
       automaticQualifiers: parsed.data.automaticQualifiers,
       bestThirdQualifiers: parsed.data.bestThirdQualifiers,
+      startsAt: parseAppDateTime(parsed.data.startsAt),
+      endsAt: parseAppDateTime(parsed.data.endsAt),
     },
   });
   revalidatePath(`/admin/${parsed.data.competitionId}`);

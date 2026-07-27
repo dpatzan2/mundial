@@ -9,15 +9,16 @@ import {
   deleteCompetitionPhaseAction,
   deleteCompetitionTeamAction,
   deleteCompetitionMatchAction,
-  updateCompetitionPhaseRulesAction,
+  updateCompetitionPhaseAction,
   saveCompetitionMatchResultAction,
 } from "@/app/actions";
 import { RoomMarketFields } from "@/components/RoomMarketFields";
 import { roomMarketCatalog } from "@/lib/room-presets";
+import { derivedMarkets } from "@/lib/market-result-display";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { stageLabels } from "@/lib/stages";
-import { formatAppDateTime } from "@/lib/timezone";
+import { formatAppDateTime, toAppDateTimeInput } from "@/lib/timezone";
 import { CompetitionTabs } from "@/components/CompetitionTabs";
 import { DeleteCompetitionButton } from "@/components/DeleteCompetitionButton";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -59,7 +60,7 @@ export default async function CompetitionDetailPage({
   searchParams,
 }: {
   params: Promise<{ competitionId: string }>;
-  searchParams: Promise<{ tab?: string; created?: string; saved?: string; deleted?: string; error?: string; editMatchId?: string; editDetailsId?: string; addMatchPhaseId?: string }>;
+  searchParams: Promise<{ tab?: string; created?: string; saved?: string; deleted?: string; error?: string; editMatchId?: string; editDetailsId?: string; editPhaseId?: string; addMatchPhaseId?: string }>;
 }) {
   await requireAdmin();
   const { competitionId } = await params;
@@ -222,7 +223,7 @@ export default async function CompetitionDetailPage({
                   <input
                     type="datetime-local"
                     name="startsAt"
-                    defaultValue={competition.startsAt?.toISOString().slice(0, 16) ?? ""}
+                    defaultValue={toAppDateTimeInput(competition.startsAt)}
                   />
                 </label>
                 <label>
@@ -230,7 +231,7 @@ export default async function CompetitionDetailPage({
                   <input
                     type="datetime-local"
                     name="endsAt"
-                    defaultValue={competition.endsAt?.toISOString().slice(0, 16) ?? ""}
+                    defaultValue={toAppDateTimeInput(competition.endsAt)}
                   />
                 </label>
               </div>
@@ -356,7 +357,10 @@ export default async function CompetitionDetailPage({
                 No hay fases registradas todavia.
               </p>
             ) : (
-              competition.phases.map((phase) => (
+              competition.phases.map((phase) => {
+                const isEditingPhase = query.editPhaseId === phase.id;
+
+                return (
                 <div className="admin-item-row" key={phase.id}>
                   <div className="admin-item-info">
                     <strong>{phase.name}</strong>
@@ -372,6 +376,14 @@ export default async function CompetitionDetailPage({
                     <span className="muted" style={{ fontSize: "0.82rem" }}>
                       {competition.matches.filter((m) => m.phaseId === phase.id).length} partidos
                     </span>
+                    <Link
+                      href={`/admin/${competition.id}?tab=phases&editPhaseId=${isEditingPhase ? "" : phase.id}`}
+                      scroll={false}
+                      className="ghost-button compact"
+                      style={{ padding: "4px 10px", fontSize: "0.8rem", minHeight: "30px", background: isEditingPhase ? "var(--muted)" : "transparent", borderRadius: "6px", textDecoration: "none" }}
+                    >
+                      {isEditingPhase ? "Cancelar" : "Editar"}
+                    </Link>
                     <form action={deleteCompetitionPhaseAction}>
                       <input type="hidden" name="id" value={phase.id} />
                       <input type="hidden" name="competitionId" value={competition.id} />
@@ -384,23 +396,65 @@ export default async function CompetitionDetailPage({
                       </button>
                     </form>
                   </div>
-                  {phase.format !== "KNOCKOUT" ? (
-                    <form action={updateCompetitionPhaseRulesAction} className="phase-rule-editor">
+                  {isEditingPhase ? (
+                    <form action={updateCompetitionPhaseAction} className="stack-form" style={{ gridColumn: "1 / -1", marginTop: "10px", background: "var(--panel-soft)", border: "1px dashed var(--line)", padding: "16px", borderRadius: "8px" }}>
                       <input type="hidden" name="id" value={phase.id} />
                       <input type="hidden" name="competitionId" value={competition.id} />
                       <label>
-                        Directos
-                        <input type="number" name="automaticQualifiers" min="0" max="64" defaultValue={phase.automaticQualifiers} />
+                        Nombre
+                        <input name="name" defaultValue={phase.name} required />
                       </label>
-                      <label>
-                        Mejores terceros
-                        <input type="number" name="bestThirdQualifiers" min="0" max="64" defaultValue={phase.bestThirdQualifiers} />
-                      </label>
-                      <button className="ghost-button" type="submit">Guardar clasificacion</button>
+                      <div className="scoring-rules-grid">
+                        <label>
+                          Formato
+                          <select name="format" defaultValue={phase.format}>
+                            {phaseFormats.map((format) => (
+                              <option value={format} key={format}>{formatLabels[format]}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Orden
+                          <input type="number" name="sortOrder" min="0" max="999" defaultValue={phase.sortOrder} />
+                        </label>
+                        <label>
+                          Etapa compatible
+                          <select name="stage" defaultValue={phase.stage ?? ""}>
+                            <option value="">Sin etapa fija</option>
+                            {stages.map((stage) => (
+                              <option value={stage} key={stage}>{stageLabels[stage]}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Grupo
+                          <input name="groupCode" defaultValue={phase.groupCode ?? ""} placeholder="A, B, Norte..." />
+                        </label>
+                        <label>
+                          Fecha y hora inicio
+                          <input type="datetime-local" name="startsAt" defaultValue={toAppDateTimeInput(phase.startsAt)} />
+                        </label>
+                        <label>
+                          Fecha y hora fin
+                          <input type="datetime-local" name="endsAt" defaultValue={toAppDateTimeInput(phase.endsAt)} />
+                        </label>
+                        <label>
+                          Clasificados directos
+                          <input type="number" name="automaticQualifiers" min="0" max="64" defaultValue={phase.automaticQualifiers} />
+                        </label>
+                        <label>
+                          Mejores terceros
+                          <input type="number" name="bestThirdQualifiers" min="0" max="64" defaultValue={phase.bestThirdQualifiers} />
+                        </label>
+                      </div>
+                      <SubmitButton className="primary-button" style={{ marginTop: "14px" }}>
+                        Guardar fase
+                      </SubmitButton>
                     </form>
                   ) : null}
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -673,7 +727,13 @@ export default async function CompetitionDetailPage({
 
                           const manualMarkets = roomMarketCatalog
                             .map((m) => m.key)
-                            .filter((k) => k !== "EXACT_SCORE" && k !== "MATCH_OUTCOME" && k !== "ADVANCING_TEAM");
+                            .filter(
+                              (k) =>
+                                k !== "EXACT_SCORE" &&
+                                k !== "MATCH_OUTCOME" &&
+                                k !== "ADVANCING_TEAM" &&
+                                !derivedMarkets.includes(k),
+                            );
 
                           const homeName = match.homeTeam?.name ?? match.homePlaceholder ?? "Local";
                           const awayName = match.awayTeam?.name ?? match.awayPlaceholder ?? "Visitante";
@@ -702,6 +762,7 @@ export default async function CompetitionDetailPage({
                                 <div className="admin-item-actions">
                                   <Link
                                     href={`/admin/${competition.id}?tab=matches&editDetailsId=${isEditingDetails ? "" : match.id}`}
+                                    scroll={false}
                                     className="ghost-button compact"
                                     style={{ padding: "4px 10px", fontSize: "0.8rem", minHeight: "30px", background: isEditingDetails ? "var(--muted)" : "transparent", borderRadius: "6px", textDecoration: "none" }}
                                   >
@@ -709,6 +770,7 @@ export default async function CompetitionDetailPage({
                                   </Link>
                                   <Link
                                     href={`/admin/${competition.id}?tab=matches&editMatchId=${isEditing ? "" : match.id}`}
+                                    scroll={false}
                                     className="primary-button compact"
                                     style={{ padding: "4px 10px", fontSize: "0.8rem", minHeight: "30px", background: isEditing ? "var(--muted)" : "var(--primary-dark)", color: "#fff", textDecoration: "none", borderRadius: "6px" }}
                                   >
@@ -868,7 +930,7 @@ export default async function CompetitionDetailPage({
                                       <input
                                         type="datetime-local"
                                         name="kickoffAt"
-                                        defaultValue={match.kickoffAt?.toISOString().slice(0, 16) ?? ""}
+                                        defaultValue={toAppDateTimeInput(match.kickoffAt)}
                                       />
                                     </label>
                                     <label>
