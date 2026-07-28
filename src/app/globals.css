@@ -987,6 +987,23 @@ h2 {
   font-size: 0.84rem;
 }
 
+.dashboard-match-teams {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* .dashboard-list-row span pinta todo en muted; los nombres de equipo no van muted. */
+.dashboard-list-row .dashboard-match-teams span {
+  color: inherit;
+  font-size: inherit;
+}
+
+.dashboard-list-row .dashboard-match-teams .muted {
+  color: var(--muted);
+}
+
 .calendar-layout {
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);

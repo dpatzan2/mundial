@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { tournamentTypeLabels } from "@/lib/room-presets";
 import { formatAppDateTime } from "@/lib/timezone";
+import { TeamLabel } from "@/components/TeamLabel";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -105,9 +106,18 @@ export default async function DashboardPage() {
               upcomingMatches.map((match) => (
                 <div className="dashboard-list-row" key={match.id}>
                   <div>
-                    <strong>
-                      {match.homeTeam?.name ?? match.homePlaceholder ?? "Local"} vs{" "}
-                      {match.awayTeam?.name ?? match.awayPlaceholder ?? "Visitante"}
+                    <strong className="dashboard-match-teams">
+                      <TeamLabel
+                        name={match.homeTeam?.name ?? match.homePlaceholder ?? "Local"}
+                        logoUrl={match.homeTeam?.logoUrl}
+                        compact
+                      />
+                      <span className="muted">vs</span>
+                      <TeamLabel
+                        name={match.awayTeam?.name ?? match.awayPlaceholder ?? "Visitante"}
+                        logoUrl={match.awayTeam?.logoUrl}
+                        compact
+                      />
                     </strong>
                     <span>
                       {match.competition.name}
