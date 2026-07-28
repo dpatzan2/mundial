@@ -132,27 +132,37 @@ export default async function RoomDetailPage({
                 {enabledMarkets.slice(0, 8).map((market) => (
                   <span key={market}>{roomMarketLabel(market)}</span>
                 ))}
-                {enabledMarkets.length > 8 ? <span>+{enabledMarkets.length - 8}</span> : null}
               </div>
+            ) : null}
+            {/* ponytail: <details> nativo en vez de un toggle con estado en cliente. */}
+            {enabledMarkets.length > 8 ? (
+              <details className="room-market-more">
+                <summary>+{enabledMarkets.length - 8} reglas mas</summary>
+                <div className="room-market-summary">
+                  {enabledMarkets.slice(8).map((market) => (
+                    <span key={market}>{roomMarketLabel(market)}</span>
+                  ))}
+                </div>
+              </details>
             ) : null}
           </div>
         </section>
-      </div>
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Miembros</h2>
-          <span>{room.members.length} usuarios</span>
-        </div>
-        <div className="stage-list">
-          {room.members.map((member) => (
-            <div className="stage-row" key={member.id}>
-              <strong>{member.user.displayName}</strong>
-              <span>{roomRoleLabels[member.role]}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+        <section className="panel">
+          <div className="panel-head">
+            <h2>Miembros</h2>
+            <span>{room.members.length} usuarios</span>
+          </div>
+          <div className="stage-list">
+            {room.members.map((member) => (
+              <div className="stage-row" key={member.id}>
+                <strong>{member.user.displayName}</strong>
+                <span>{roomRoleLabels[member.role]}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

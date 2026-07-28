@@ -596,6 +596,38 @@ h2 {
   font-weight: 800;
 }
 
+.room-market-more {
+  margin-top: 8px;
+}
+
+.room-market-more > summary {
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--panel-soft, color-mix(in srgb, var(--primary) 6%, var(--panel)));
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.room-market-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.room-market-more > summary::after {
+  content: " ▾";
+}
+
+.room-market-more[open] > summary {
+  margin-bottom: 8px;
+}
+
+.room-market-more[open] > summary::after {
+  content: " ▴";
+}
+
 /* ── Crear sala: asistente y revision ──────────────── */
 
 .room-wizard-step {

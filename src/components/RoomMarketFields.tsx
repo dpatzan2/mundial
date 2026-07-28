@@ -284,16 +284,6 @@ function MarketInput({
     return <RangeSelect market={market} matchId={match.id} value={value} options={cornerRangeOptions} />;
   }
 
-  if (market === "PLAYER_FIRST_GOAL") {
-    return (
-      <input
-        name={marketFieldName(market, match.id, "value")}
-        defaultValue={stringValue(value, "value")}
-        placeholder="Nombre del jugador"
-      />
-    );
-  }
-
   return null;
 }
 
