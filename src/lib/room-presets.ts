@@ -48,8 +48,7 @@ export type RoomMarketKey =
   | "YELLOW_CARD_RANGE"
   | "TOTAL_CORNERS_RANGE"
   | "TEAM_MOST_CORNERS"
-  | "TEAM_MOST_CARDS"
-  | "PLAYER_FIRST_GOAL";
+  | "TEAM_MOST_CARDS";
 
 export type RoomMarketDefinition = {
   key: RoomMarketKey;
@@ -290,13 +289,6 @@ export const roomMarketCatalog: RoomMarketDefinition[] = [
     description: "Equipo que recibe mas tarjetas.",
     defaultPoints: 1,
     group: "discipline",
-  },
-  {
-    key: "PLAYER_FIRST_GOAL",
-    label: "Jugador primer gol",
-    description: "Jugador que anota el primer gol si la API lo soporta.",
-    defaultPoints: 3,
-    group: "advanced",
   },
 ];
 

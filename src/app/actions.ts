@@ -1900,11 +1900,6 @@ function readMarketValue(formData: FormData, market: RoomMarketKey, matchId: str
     return value === null ? null : { value };
   }
 
-  if (market === "PLAYER_FIRST_GOAL") {
-    const value = String(field("value") ?? "").trim();
-    return value ? { value } : null;
-  }
-
   return null;
 }
 
