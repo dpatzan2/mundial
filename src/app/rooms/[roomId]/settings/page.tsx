@@ -9,6 +9,7 @@ import {
   updateRoomSettingsAction,
 } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { DeleteRoomButton } from "@/components/DeleteRoomButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { requireRoomMembership, roomRoleLabels } from "@/lib/rooms";
@@ -348,9 +349,25 @@ export default async function RoomSettingsPage({
             </div>
           </fieldset>
 
-          <SubmitButton className="primary-button">
+          <ConfirmButton
+            tone="primary"
+            title="Los cambios aplican hacia adelante"
+            message={
+              <>
+                <p>
+                  Las reglas nuevas solo cuentan para los partidos que empiecen despues de este
+                  momento.
+                </p>
+                <p>
+                  Los partidos que ya empezaron o terminaron conservan las reglas con las que se
+                  jugaron, asi que los puntos ya repartidos no cambian.
+                </p>
+              </>
+            }
+            confirmText="Guardar configuracion"
+          >
             Guardar configuracion
-          </SubmitButton>
+          </ConfirmButton>
         </form>
 
         <section className="panel room-form">

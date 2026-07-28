@@ -1079,6 +1079,28 @@ export async function updateRoomSettingsAction(formData: FormData) {
     redirect(`/rooms/${parsed.data.roomId}/settings?error=invalid-tournament-name`);
   }
 
+  // Las reglas viejas siguen valiendo para los partidos ya empezados: se archiva la version
+  // vigente (una sola vez por sala) y la nueva rige desde ahora. Ver rulesAtKickoff.
+  const previousRules = await prisma.roomRuleSet.findUnique({
+    where: { roomId: parsed.data.roomId },
+  });
+  const hasVersions = await prisma.roomRuleVersion.count({
+    where: { roomId: parsed.data.roomId },
+  });
+  if (previousRules && hasVersions === 0) {
+    await prisma.roomRuleVersion.create({
+      data: {
+        roomId: parsed.data.roomId,
+        effectiveFrom: new Date(0),
+        exactScorePoints: previousRules.exactScorePoints,
+        outcomePoints: previousRules.outcomePoints,
+        advancePickPoints: previousRules.advancePickPoints,
+        enabledMarkets: previousRules.enabledMarkets ?? [],
+        customMarketConfig: previousRules.customMarketConfig ?? Prisma.DbNull,
+      },
+    });
+  }
+
   await prisma.room.update({
     where: { id: parsed.data.roomId },
     data: {
@@ -1113,6 +1135,18 @@ export async function updateRoomSettingsAction(formData: FormData) {
           },
         },
       },
+    },
+  });
+
+  await prisma.roomRuleVersion.create({
+    data: {
+      roomId: parsed.data.roomId,
+      effectiveFrom: new Date(),
+      exactScorePoints: parsed.data.exactScorePoints,
+      outcomePoints: parsed.data.outcomePoints,
+      advancePickPoints: parsed.data.advancePickPoints,
+      enabledMarkets,
+      customMarketConfig,
     },
   });
 

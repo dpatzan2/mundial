@@ -9,7 +9,12 @@ export const roomRoleLabels: Record<RoomMemberRole, string> = {
   MEMBER: "Miembro",
 };
 
-export function scoringRulesFromRoomRuleSet(ruleSet?: RoomRuleSet | null): ScoringRules {
+type ScoringFields = Pick<
+  RoomRuleSet,
+  "exactScorePoints" | "outcomePoints" | "advancePickPoints"
+>;
+
+export function scoringRulesFromRoomRuleSet(ruleSet?: ScoringFields | null): ScoringRules {
   return {
     groupExactPoints: ruleSet?.exactScorePoints ?? 3,
     groupOutcomePoints: ruleSet?.outcomePoints ?? 1,

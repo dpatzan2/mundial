@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient, type RoomRuleSet, type RoomRuleVersion } from "@prisma/client";
 import { roomMarketPoints, scoreEnabledMarketAnswer } from "@/lib/market-scoring";
 import { marketsForStage, parseEnabledMarkets } from "@/lib/room-presets";
 import { scorePrediction } from "@/lib/scoring";
@@ -82,6 +82,27 @@ export async function refreshRoomLeaderboards(db: DbClient, roomIds: string[]) {
   `);
 }
 
+type RoomWithRules = {
+  ruleSet: RoomRuleSet | null;
+  ruleVersions: RoomRuleVersion[];
+};
+
+/**
+ * Reglas vigentes al kickoff del partido: un cambio de reglas solo afecta a los partidos que
+ * empiezan despues del guardado. Sin versiones (sala que nunca edito ajustes) usa las actuales.
+ */
+export function rulesAtKickoff(room: RoomWithRules | null | undefined, kickoffAt: Date | null) {
+  if (!room) return null;
+  const version = kickoffAt
+    ? room.ruleVersions.find((candidate) => candidate.effectiveFrom <= kickoffAt)
+    : undefined;
+  return version ?? room.ruleSet;
+}
+
+const roomRules = {
+  include: { ruleSet: true, ruleVersions: { orderBy: { effectiveFrom: "desc" } } },
+} as const;
+
 export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) {
   const [predictions, answers, championPicks] = await Promise.all([
     db.prediction.findMany({
@@ -89,7 +110,7 @@ export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) 
       include: {
         match: true,
         competitionMatch: { include: { phase: true } },
-        room: { include: { ruleSet: true } },
+        room: roomRules,
       },
     }),
     db.predictionAnswer.findMany({
@@ -97,7 +118,7 @@ export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) 
       include: {
         match: true,
         competitionMatch: { include: { phase: true } },
-        room: { include: { ruleSet: true } },
+        room: roomRules,
       },
     }),
     scope.matchId
@@ -138,7 +159,8 @@ export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) 
   const globalRules = needsDefaultRules ? await getScoringRules() : defaultScoringRules;
 
   const predictionUpdates = predictions.map((prediction) => {
-    const ruleSet = prediction.room?.ruleSet;
+    const kickoffAt = prediction.competitionMatch?.kickoffAt ?? prediction.match?.kickoffAt ?? null;
+    const ruleSet = rulesAtKickoff(prediction.room, kickoffAt);
     const configuredMarkets = ruleSet
       ? parseEnabledMarkets(ruleSet.enabledMarkets)
       : ["EXACT_SCORE", "MATCH_OUTCOME", "ADVANCING_TEAM"] as const;
@@ -176,8 +198,9 @@ export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) 
     const match = answer.competitionMatch ?? answer.match;
     if (!match) return { id: answer.id, points: 0 };
     const stage = answer.competitionMatch?.phase?.stage ?? answer.match?.stage ?? "GROUP";
+    const ruleSet = rulesAtKickoff(answer.room, match.kickoffAt);
     const enabledMarkets = new Set(
-      marketsForStage(parseEnabledMarkets(answer.room.ruleSet?.enabledMarkets), stage),
+      marketsForStage(parseEnabledMarkets(ruleSet?.enabledMarkets), stage),
     );
     const resultKey = answer.competitionMatchId ?? answer.matchId;
     return {
@@ -186,7 +209,7 @@ export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) 
         answer,
         match,
         result: resultByMatchAndMarket.get(`${resultKey}:${answer.marketKey}`),
-        pointsByMarket: roomMarketPoints(answer.room.ruleSet),
+        pointsByMarket: roomMarketPoints(ruleSet),
         enabledMarkets,
       }),
     };
