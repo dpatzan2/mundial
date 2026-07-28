@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef } from "react";
 import { Trash2 } from "lucide-react";
 import { deleteRoomAction } from "@/app/actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 export function DeleteRoomButton({
   roomId,
@@ -11,28 +11,18 @@ export function DeleteRoomButton({
   roomId: string;
   roomName: string;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
-
-  const handleClick = () => {
-    const confirmed = window.confirm(
-      `¿Eliminar la sala "${roomName}"? Se borrarán todos los miembros y pronósticos. Esta acción no se puede deshacer.`
-    );
-    if (confirmed) {
-      formRef.current?.requestSubmit();
-    }
-  };
-
   return (
-    <form ref={formRef} action={deleteRoomAction}>
+    <form action={deleteRoomAction}>
       <input type="hidden" name="roomId" value={roomId} />
-      <button
-        type="button"
-        onClick={handleClick}
-        className="danger-button"
+      <ConfirmButton
+        title="Eliminar sala"
+        message={`Se borrarán todos los miembros y pronósticos de "${roomName}". Esta acción no se puede deshacer.`}
+        confirmText="Eliminar sala"
+        pendingText="Eliminando..."
       >
         <Trash2 size={15} />
         Eliminar sala
-      </button>
+      </ConfirmButton>
     </form>
   );
 }

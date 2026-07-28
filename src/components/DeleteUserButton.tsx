@@ -3,6 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { useActionState } from "react";
 import { deleteUserAction } from "@/app/actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { FormFeedback, useActionFeedback } from "@/components/FormFeedback";
 
 export function DeleteUserButton({
@@ -20,28 +21,18 @@ export function DeleteUserButton({
   return (
     <div className="delete-user-action">
       <FormFeedback feedback={feedback} />
-      <form
-        action={action}
-        onSubmit={(event) => {
-          if (
-            !confirm(
-              `Eliminar a ${displayName}? Se borraran sus pronosticos y no se puede deshacer.`,
-            )
-          ) {
-            event.preventDefault();
-          }
-        }}
-      >
+      <form action={action}>
         <input type="hidden" name="userId" value={userId} />
-        <button
-          className="danger-button"
-          type="submit"
-          disabled={disabled || isPending}
+        <ConfirmButton
           title="Eliminar usuario"
+          message={`Se borrarán los pronósticos de ${displayName}. Esta acción no se puede deshacer.`}
+          confirmText="Eliminar usuario"
+          pendingText="Eliminando..."
+          disabled={disabled || isPending}
         >
           <Trash2 size={16} />
           <span className="sr-only">Eliminar {displayName}</span>
-        </button>
+        </ConfirmButton>
       </form>
     </div>
   );

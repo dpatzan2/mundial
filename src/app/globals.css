@@ -987,6 +987,44 @@ h2 {
   font-size: 0.84rem;
 }
 
+/* Dialogo de confirmacion: reemplaza window.confirm en toda la app. */
+.app-dialog {
+  width: min(420px, calc(100vw - 32px));
+  margin: auto;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 35%);
+}
+
+.app-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+.app-dialog h3 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.app-dialog-body {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.app-dialog-body p {
+  margin: 0 0 8px;
+}
+
+.app-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
 .dashboard-match-teams {
   display: flex;
   flex-wrap: wrap;
