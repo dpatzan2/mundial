@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ClipboardList, Trophy, Settings, Info } from "lucide-react";
+import { Check, ClipboardList, Copy, Trophy, Settings, Info } from "lucide-react";
+import { useState } from "react";
 
 export function RoomHeader({
   roomId,
@@ -16,6 +17,17 @@ export function RoomHeader({
   activeTab: "info" | "picks" | "leaderboard" | "settings";
   canManage: boolean;
 }) {
+  const [copied, setCopied] = useState(false);
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(accessCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ponytail: sin clipboard (http sin TLS) el codigo sigue visible para copiarlo a mano.
+    }
+  };
+
   return (
     <div className="room-nav-header">
       <header className="page-header detail-header" style={{ marginBottom: "12px" }}>
@@ -26,6 +38,15 @@ export function RoomHeader({
         <div className="detail-score room-code-box">
           <span>Código</span>
           <strong>{accessCode}</strong>
+          <button
+            type="button"
+            className={`room-code-copy${copied ? " copied" : ""}`}
+            onClick={copyCode}
+            aria-label={copied ? "Código copiado" : "Copiar código de la sala"}
+          >
+            {copied ? <Check size={15} /> : <Copy size={15} />}
+            <span>{copied ? "Copiado" : "Copiar"}</span>
+          </button>
         </div>
       </header>
 
