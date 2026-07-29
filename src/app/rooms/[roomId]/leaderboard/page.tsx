@@ -4,6 +4,35 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireRoomMembership } from "@/lib/rooms";
 import { RoomHeader } from "@/components/RoomHeader";
+import { personalPerformance, type PerformanceRow } from "@/lib/personal-performance";
+import { roomMarketLabel, type RoomMarketKey } from "@/lib/room-presets";
+
+function PerformanceGroup({
+  tone,
+  title,
+  rows,
+}: {
+  tone: "good" | "bad";
+  title: string;
+  rows: PerformanceRow[];
+}) {
+  return (
+    <div className={`performance-group ${tone}`}>
+      <span className="eyebrow">{title}</span>
+      <ul className="performance-list">
+        {rows.map((row) => (
+          <li className="performance-row" key={row.key}>
+            <span className="performance-label">{row.label}</span>
+            <span className="performance-detail">
+              {row.hits}/{row.attempts} · {row.points} pts
+            </span>
+            <b className="performance-accuracy">{row.accuracy}%</b>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default async function RoomLeaderboardPage({
   params,
@@ -15,7 +44,9 @@ export default async function RoomLeaderboardPage({
   const { room, membership } = await requireRoomMembership(roomId, user.id);
   const canManage = membership.role === "OWNER" || membership.role === "ADMIN";
 
-  const [entries, hitGroups] = await Promise.all([
+  // Solo partidos terminados: los pendientes valen 0 y contarian como fallo.
+  const myFinished = { roomId, userId: user.id, competitionMatch: { status: "FINISHED" as const } };
+  const [entries, hitGroups, myScores, bonusAttempts, bonusHits] = await Promise.all([
     prisma.roomLeaderboardEntry.findMany({
       where: { roomId },
       include: { user: { select: { displayName: true } } },
@@ -27,7 +58,45 @@ export default async function RoomLeaderboardPage({
       where: { roomId, points: { gt: 0 } },
       _count: { _all: true },
     }),
+    prisma.prediction.findMany({
+      where: myFinished,
+      select: {
+        predictedHomeScore: true,
+        predictedAwayScore: true,
+        points: true,
+        competitionMatch: { select: { homeScore: true, awayScore: true } },
+      },
+    }),
+    prisma.predictionAnswer.groupBy({
+      by: ["marketKey"],
+      where: myFinished,
+      _count: { _all: true },
+      _sum: { points: true },
+    }),
+    prisma.predictionAnswer.groupBy({
+      by: ["marketKey"],
+      where: { ...myFinished, points: { gt: 0 } },
+      _count: { _all: true },
+    }),
   ]);
+
+  const bonusHitsByMarket = new Map(bonusHits.map((group) => [group.marketKey, group._count._all]));
+  const performance = personalPerformance(
+    myScores.map((prediction) => ({
+      predictedHomeScore: prediction.predictedHomeScore,
+      predictedAwayScore: prediction.predictedAwayScore,
+      homeScore: prediction.competitionMatch?.homeScore ?? null,
+      awayScore: prediction.competitionMatch?.awayScore ?? null,
+      points: prediction.points,
+    })),
+    bonusAttempts.map((group) => ({
+      key: group.marketKey,
+      label: roomMarketLabel(group.marketKey as RoomMarketKey),
+      attempts: group._count._all,
+      hits: bonusHitsByMarket.get(group.marketKey) ?? 0,
+      points: group._sum.points ?? 0,
+    })),
+  );
 
   const hitsByUserId = new Map(hitGroups.map((group) => [group.userId, group._count._all]));
   const leaderPoints = entries[0]?.totalPoints ?? 0;
@@ -118,6 +187,25 @@ export default async function RoomLeaderboardPage({
           )}
         </>
       )}
+
+      <section className="panel performance-panel">
+        <div className="panel-head">
+          <h2>Tu rendimiento</h2>
+        </div>
+
+        {performance.best.length === 0 ? (
+          <p className="muted performance-empty">
+            Cuando termines mas partidos verás aquí en qué tipo de pronóstico te va mejor.
+          </p>
+        ) : (
+          <div className="performance-groups">
+            <PerformanceGroup tone="good" title="Se te da bien" rows={performance.best} />
+            {performance.worst.length > 0 ? (
+              <PerformanceGroup tone="bad" title="Se te complica" rows={performance.worst} />
+            ) : null}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
