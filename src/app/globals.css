@@ -494,8 +494,19 @@ h2 {
   cursor: pointer;
 }
 
-.room-preset-option input {
+/* Radios ocultos detras de su etiqueta. Sin tamaño propio heredan el width:100% de la regla
+   global de inputs y, al ser absolute sin ancestro posicionado, se miden contra el viewport:
+   eso ensanchaba la pagina y generaba scroll horizontal. */
+.room-preset-option input,
+.room-market-option > input,
+.market-choice input,
+.knockout-option input {
   position: absolute;
+  width: 0;
+  height: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -879,12 +890,6 @@ h2 {
 
 .room-market-option {
   cursor: pointer;
-}
-
-.room-market-option > input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
 }
 
 .room-market-option > span {
@@ -2188,12 +2193,6 @@ input:disabled {
   cursor: pointer;
 }
 
-.market-choice input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .market-choice span {
   min-height: 38px;
   padding: 7px 8px;
@@ -2461,12 +2460,6 @@ input:disabled {
   min-width: 0;
   max-width: 100%;
   cursor: pointer;
-}
-
-.knockout-option input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
 }
 
 .knockout-option-body {
