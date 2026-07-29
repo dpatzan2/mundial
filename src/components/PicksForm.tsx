@@ -163,7 +163,8 @@ export function PicksForm({
               officialResults={officialMarketResults[match.id] ?? {}}
             />
           ) : null}
-          {isVisible && availableBonusMarkets.length > 0 ? (
+          {/* El partido termino: los bonus ya no se pueden pronosticar, el resumen de arriba los muestra. */}
+          {isVisible && match.status !== "FINISHED" && availableBonusMarkets.length > 0 ? (
             <details className="picks-market-details">
               <summary>
                 <span>Bonus opcionales</span>

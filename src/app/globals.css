@@ -3637,6 +3637,21 @@ input:disabled {
     width: 100%;
   }
 
+  /* La barra flotante tapa el final del formulario: reservamos su alto segun cuantas filas trae
+     (solo el boton, o boton + aviso de fecha cerrada + mensaje de guardado). */
+  .prediction-form {
+    padding-bottom: 78px;
+  }
+
+  .prediction-form:has(.picks-actions-note),
+  .prediction-form:has(.form-action-feedback) {
+    padding-bottom: 150px;
+  }
+
+  .prediction-form:has(.picks-actions-note):has(.form-action-feedback) {
+    padding-bottom: 222px;
+  }
+
   .admin-competition-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
@@ -3670,17 +3685,35 @@ input:disabled {
     gap: 6px 16px;
   }
 
+  /* Tu eleccion y Resultado uno al lado del otro, cada uno con su valor debajo. */
   .prediction-result-row {
-    grid-template-columns: 24px minmax(0, 1fr) 48px;
+    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) 48px;
     align-items: start;
+    column-gap: 8px;
   }
 
-  .prediction-result-row > span:not(.prediction-result-icon) {
-    grid-column: 2 / -1;
+  .prediction-result-row > .prediction-result-icon {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .prediction-result-row > strong {
+    grid-column: 2 / 4;
+    grid-row: 1;
+  }
+
+  .prediction-result-row > span:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .prediction-result-row > span:nth-of-type(3) {
+    grid-column: 3;
+    grid-row: 2;
   }
 
   .prediction-result-row > b:last-child {
-    grid-column: 3;
+    grid-column: 4;
     grid-row: 1;
   }
 
@@ -5025,8 +5058,12 @@ input:disabled {
   .champion-pick { grid-template-columns: auto minmax(0, 1fr); }
   .champion-pick select { grid-column: 1 / -1; }
   .popular-prediction-grid { gap: 4px; }
-  .match-recent-form { grid-template-columns: 1fr; }
+  /* Los dos equipos en una sola fila y cada nombre junto a su racha; el nombre corta con ellipsis. */
+  .match-recent-form { gap: 8px; padding: 8px 12px; }
+  .match-recent-form > div { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+  .match-recent-form > div > small { flex: 1 1 auto; min-width: 0; }
   .match-recent-form > div:last-child { justify-items: start; }
+  .match-recent-form .form-dot { width: 20px; height: 20px; font-size: 0.6rem; }
   .room-inline-settings { grid-template-columns: 1fr; }
   .phase-rule-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .phase-rule-editor button { grid-column: 1 / -1; }
