@@ -1,42 +1,42 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ClipboardList, Settings, Trophy, Users } from "lucide-react";
+import { ArrowLeft, BarChart3, Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import {
-  roomMarketLabel,
-  roomPresetDescription,
-  roomPresetLabels,
-  tournamentTypeLabels,
-  type RoomMarketKey,
-} from "@/lib/room-presets";
-import { roomRoleLabels } from "@/lib/rooms";
+import { buildBracket } from "@/lib/bracket";
+import { tournamentTypeLabels } from "@/lib/room-presets";
+import { BracketView } from "@/components/BracketView";
 import { RoomHeader } from "@/components/RoomHeader";
-
-function enabledMarketsFrom(value: unknown): RoomMarketKey[] {
-  if (!Array.isArray(value)) return [];
-  return value.map(String) as RoomMarketKey[];
-}
+import { StandingsView } from "@/components/StandingsView";
 
 export default async function RoomDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ roomId: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
   const user = await requireUser();
   const { roomId } = await params;
+  const query = await searchParams;
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: {
-      members: {
+      members: { select: { userId: true, role: true } },
+      competition: {
         include: {
-          user: {
-            select: { id: true, displayName: true, username: true },
+          teams: { orderBy: { name: "asc" } },
+          phases: {
+            include: {
+              matches: {
+                include: { homeTeam: true, awayTeam: true },
+                orderBy: [{ kickoffAt: "asc" }, { matchNumber: "asc" }],
+              },
+            },
+            orderBy: { sortOrder: "asc" },
           },
         },
-        orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
       },
-      ruleSet: true,
     },
   });
 
@@ -45,7 +45,8 @@ export default async function RoomDetailPage({
   if (!currentMember) notFound();
 
   const canManage = currentMember.role === "OWNER" || currentMember.role === "ADMIN";
-  const enabledMarkets = enabledMarketsFrom(room.ruleSet?.enabledMarkets);
+  const bracket = room.competition ? buildBracket(room.competition.phases) : null;
+  const view = query.view === "bracket" && bracket ? "bracket" : "standings";
 
   return (
     <div className="page">
@@ -61,108 +62,45 @@ export default async function RoomDetailPage({
         canManage={canManage}
       />
 
-      <div className="metric-grid">
-        <div className="metric">
-          <span>
-            <Trophy size={18} />
-          </span>
-          <small>Torneo</small>
-          <strong>{room.tournamentName}</strong>
-        </div>
-        <div className="metric">
-          <span>
-            <ClipboardList size={18} />
-          </span>
-          <small>Tipo</small>
-          <strong>{tournamentTypeLabels[room.tournamentType]}</strong>
-        </div>
-        <div className="metric">
-          <span>
-            <Settings size={18} />
-          </span>
-          <small>Modo</small>
-          <strong>{roomPresetLabels[room.configPreset]}</strong>
-        </div>
-        <div className="metric">
-          <span>
-            <Users size={18} />
-          </span>
-          <small>Miembros</small>
-          <strong>{room.members.length}</strong>
-        </div>
-      </div>
+      <p className="room-tournament-line">
+        <Trophy size={15} />
+        <strong>{room.tournamentName}</strong>
+        <span>{tournamentTypeLabels[room.tournamentType]}</span>
+      </p>
 
-      <div className="two-column">
-
-        <section className="panel">
-          <div className="panel-head">
-            <h2>Configuracion</h2>
-            <span>{roomPresetLabels[room.configPreset]}</span>
-          </div>
-          <div className="room-config-summary">
-            <p>{roomPresetDescription(room.configPreset)}</p>
-            <dl>
-              <div>
-                <dt>Marcador exacto</dt>
-                <dd>{room.ruleSet?.exactScorePoints ?? 3} pts</dd>
-              </div>
-              <div>
-                <dt>Resultado</dt>
-                <dd>{room.ruleSet?.outcomePoints ?? 1} pt</dd>
-              </div>
-              <div>
-                <dt>Quien pasa</dt>
-                <dd>{room.ruleSet?.advancePickPoints ?? 1} pt</dd>
-              </div>
-              <div>
-                <dt>Campeon</dt>
-                <dd>{room.championPickEnabled ? `${room.championPickPoints} pts` : "Desactivado"}</dd>
-              </div>
-              <div>
-                <dt>Popular</dt>
-                <dd>{
-                  room.popularPredictionsVisibility === "ALWAYS" ? "Siempre" :
-                  room.popularPredictionsVisibility === "AFTER_PICK" ? "Despues del pick" :
-                  room.popularPredictionsVisibility === "AFTER_DEADLINE" ? "Al cierre" : "Oculto"
-                }</dd>
-              </div>
-            </dl>
-            {enabledMarkets.length > 0 ? (
-              <div className="room-market-summary">
-                {enabledMarkets.slice(0, 8).map((market) => (
-                  <span key={market}>{roomMarketLabel(market)}</span>
-                ))}
-              </div>
+      {room.competition ? (
+        <>
+          <nav className="competition-view-tabs">
+            <Link
+              className={view === "standings" ? "active" : ""}
+              href={`/rooms/${room.id}?view=standings`}
+            >
+              <BarChart3 size={17} />
+              Posiciones
+            </Link>
+            {bracket ? (
+              <Link
+                className={view === "bracket" ? "active" : ""}
+                href={`/rooms/${room.id}?view=bracket`}
+              >
+                <Trophy size={17} />
+                Eliminatoria
+              </Link>
             ) : null}
-            {/* ponytail: <details> nativo en vez de un toggle con estado en cliente. */}
-            {enabledMarkets.length > 8 ? (
-              <details className="room-market-more">
-                <summary>+{enabledMarkets.length - 8} reglas mas</summary>
-                <div className="room-market-summary">
-                  {enabledMarkets.slice(8).map((market) => (
-                    <span key={market}>{roomMarketLabel(market)}</span>
-                  ))}
-                </div>
-              </details>
-            ) : null}
-          </div>
-        </section>
+          </nav>
 
-        <section className="panel">
-          <div className="panel-head">
-            <h2>Miembros</h2>
-            <span>{room.members.length} usuarios</span>
-          </div>
-          <div className="stage-list">
-            {room.members.map((member) => (
-              <div className="stage-row" key={member.id}>
-                <strong>{member.user.displayName}</strong>
-                <span>{roomRoleLabels[member.role]}</span>
-              </div>
-            ))}
-          </div>
+          {view === "bracket" && bracket ? (
+            <BracketView bracket={bracket} />
+          ) : (
+            <StandingsView competition={room.competition} />
+          )}
+        </>
+      ) : (
+        <section className="panel empty-state-panel">
+          <h2>Esta sala no tiene una competicion asociada</h2>
+          <p className="muted">Las posiciones y la eliminatoria apareceran cuando se enlace una.</p>
         </section>
-      </div>
+      )}
     </div>
   );
 }
