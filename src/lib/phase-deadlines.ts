@@ -229,7 +229,9 @@ export function roomDeadlineConfig(room: {
 export function championPickDeadlineAt(
   matches: Array<{ kickoffAt?: Date | null }>,
   hoursBefore = 1,
+  override?: Date | null,
 ) {
+  if (override) return override;
   const firstKickoff = matches
     .map((match) => match.kickoffAt)
     .filter((date): date is Date => Boolean(date))

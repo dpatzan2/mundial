@@ -277,6 +277,7 @@ model Room {
   popularPredictionsVisibility PopularPredictionsVisibility @default(AFTER_PICK)
   championPickEnabled          Boolean                      @default(true)
   championPickPoints           Int                          @default(5)
+  championPickDeadline         DateTime?
   status                       RoomStatus                   @default(ACTIVE)
   ownerId                      String
   owner                        User                         @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)

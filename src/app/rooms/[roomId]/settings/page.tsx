@@ -21,6 +21,7 @@ import {
   type RoomMarketKey,
 } from "@/lib/room-presets";
 import { prisma } from "@/lib/db";
+import { toAppDateTimeInput } from "@/lib/timezone";
 
 const tournamentTypes = [
   "WORLD_CUP",
@@ -280,6 +281,15 @@ export default async function RoomSettingsPage({
                   max="99"
                   defaultValue={room.championPickPoints}
                 />
+              </label>
+              <label className="room-inline-number">
+                Cierre del pronostico de campeon
+                <input
+                  type="datetime-local"
+                  name="championPickDeadline"
+                  defaultValue={toAppDateTimeInput(room.championPickDeadline)}
+                />
+                <small>Vacio = antes del primer partido, segun las horas de arriba.</small>
               </label>
             </div>
           </fieldset>

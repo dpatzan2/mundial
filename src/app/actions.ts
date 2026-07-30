@@ -1008,6 +1008,7 @@ export async function updateRoomSettingsAction(formData: FormData) {
     popularPredictionsVisibility: z.enum(["ALWAYS", "AFTER_PICK", "AFTER_DEADLINE", "HIDDEN"]),
     championPickEnabled: z.boolean(),
     championPickPoints: z.coerce.number().int().min(0).max(99),
+    championPickDeadline: z.string().trim(),
     exactScorePoints: z.coerce.number().int().min(0).max(99),
     outcomePoints: z.coerce.number().int().min(0).max(99),
     advancePickPoints: z.coerce.number().int().min(0).max(99),
@@ -1024,6 +1025,7 @@ export async function updateRoomSettingsAction(formData: FormData) {
     popularPredictionsVisibility: String(formData.get("popularPredictionsVisibility") ?? "AFTER_PICK"),
     championPickEnabled: formData.get("championPickEnabled") === "on",
     championPickPoints: formData.get("championPickPoints") ?? "5",
+    championPickDeadline: String(formData.get("championPickDeadline") ?? ""),
     exactScorePoints: formData.get("exactScorePoints"),
     outcomePoints: formData.get("outcomePoints"),
     advancePickPoints: formData.get("advancePickPoints"),
@@ -1115,6 +1117,8 @@ export async function updateRoomSettingsAction(formData: FormData) {
         parsed.data.popularPredictionsVisibility as PopularPredictionsVisibility,
       championPickEnabled: parsed.data.championPickEnabled,
       championPickPoints: parsed.data.championPickPoints,
+      // Vacio vuelve al calculo automatico (primer partido menos deadlineHoursBefore).
+      championPickDeadline: parseAppDateTime(parsed.data.championPickDeadline),
       ruleSet: {
         upsert: {
           update: {
@@ -1557,7 +1561,11 @@ export async function saveRoomPredictionsAction(
     }
 
     const championTeamId = String(formData.get("championTeamId") ?? "").trim();
-    const championDeadline = championPickDeadlineAt(matches, room.deadlineHoursBefore);
+    const championDeadline = championPickDeadlineAt(
+      matches,
+      room.deadlineHoursBefore,
+      room.championPickDeadline,
+    );
     const championOpen =
       DEVELOPMENT_PHASE_UNLOCKS ||
       !championDeadline ||
