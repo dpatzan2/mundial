@@ -240,7 +240,11 @@ export default async function RoomPicksPage({
     });
   });
 
-  const championDeadline = championPickDeadlineAt(competition.matches, room.deadlineHoursBefore);
+  const championDeadline = championPickDeadlineAt(
+    competition.matches,
+    room.deadlineHoursBefore,
+    room.championPickDeadline,
+  );
 
   return (
     <div className="page room-picks-page">
