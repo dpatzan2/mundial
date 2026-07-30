@@ -24,6 +24,7 @@ import {
 } from "@/lib/phase-deadlines";
 import { bonusMarketsFor, parseEnabledMarkets, type RoomMarketKey } from "@/lib/room-presets";
 import { requireRoomMembership } from "@/lib/rooms";
+import { firstLegMatchIds } from "@/lib/two-legged";
 import { formatAppDateTime } from "@/lib/timezone";
 
 function stageFor(phase: { stage: MatchStage | null; format: string } | null): MatchStage {
@@ -208,6 +209,7 @@ export default async function RoomPicksPage({
     };
   }
 
+  const firstLegs = firstLegMatchIds(deadlineMatches);
   const displayMatches = competition.matches.map((match, index) => {
     const stage = stageFor(match.phase);
     const deadlineMatch = { ...match, stage };
@@ -236,6 +238,7 @@ export default async function RoomPicksPage({
       awayScore: match.awayScore,
       actualWinnerSide: match.actualWinnerSide,
       status: match.status,
+      firstLeg: firstLegs.has(match.id),
       pickDeadlineLabel: pickDeadline ? formatAppDateTime(pickDeadline) : null,
     });
   });

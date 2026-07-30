@@ -137,7 +137,7 @@ export function PicksForm({
     const prediction = predictions[match.id];
     const deadline = deadlineMap[match.stage];
     const peerPicksVisible = match.peerPicksVisible ?? canViewPeerPredictions(deadline);
-    const availableBonusMarkets = bonusMarketsForStage(roomMarkets, match.stage);
+    const availableBonusMarkets = bonusMarketsForStage(roomMarkets, match.stage, match.firstLeg);
 
     return (
       <div className={isVisible ? "match-day-entry" : "match-day-entry is-hidden"} key={match.id}>

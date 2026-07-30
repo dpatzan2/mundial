@@ -30,6 +30,8 @@ export type DisplayMatch = {
   awayScore: number | null;
   actualWinnerSide: "HOME" | "AWAY" | null;
   status: "SCHEDULED" | "LIVE" | "FINISHED";
+  /** Ida de una llave a doble partido: se pronostica el marcador, no quien pasa. */
+  firstLeg?: boolean;
 };
 
 export type DisplayMarketAnswer = {

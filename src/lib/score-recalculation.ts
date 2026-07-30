@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient, type RoomRuleSet, type RoomRuleVersion } fro
 import { roomMarketPoints, scoreEnabledMarketAnswer } from "@/lib/market-scoring";
 import { marketsForStage, parseEnabledMarkets } from "@/lib/room-presets";
 import { scorePrediction } from "@/lib/scoring";
+import { firstLegMatchIds } from "@/lib/two-legged";
 import { defaultScoringRules, getScoringRules } from "@/lib/scoring-settings";
 import { scoringRulesFromRoomRuleSet } from "@/lib/rooms";
 
@@ -158,6 +159,32 @@ export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) 
   const needsDefaultRules = predictions.some((prediction) => !prediction.roomId);
   const globalRules = needsDefaultRules ? await getScoringRules() : defaultScoringRules;
 
+  // Para saber si un partido es la ida hay que ver los otros de su fase, no solo el propio.
+  const phaseIds = [
+    ...new Set(
+      [...predictions, ...answers]
+        .map((row) => row.competitionMatch?.phaseId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const phaseMatches = phaseIds.length
+    ? await db.competitionMatch.findMany({
+        where: { phaseId: { in: phaseIds } },
+        select: {
+          id: true,
+          phaseId: true,
+          homeTeamId: true,
+          awayTeamId: true,
+          kickoffAt: true,
+          matchNumber: true,
+          phase: { select: { stage: true } },
+        },
+      })
+    : [];
+  const firstLegs = firstLegMatchIds(
+    phaseMatches.map((match) => ({ ...match, stage: match.phase?.stage ?? "GROUP" })),
+  );
+
   const predictionUpdates = predictions.map((prediction) => {
     const kickoffAt = prediction.competitionMatch?.kickoffAt ?? prediction.match?.kickoffAt ?? null;
     const ruleSet = rulesAtKickoff(prediction.room, kickoffAt);
@@ -166,6 +193,7 @@ export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) 
       : ["EXACT_SCORE", "MATCH_OUTCOME", "ADVANCING_TEAM"] as const;
     const canonical = prediction.competitionMatch;
     const legacy = prediction.match;
+    const firstLeg = canonical ? firstLegs.has(canonical.id) : false;
     const match = canonical
       ? {
           stage: canonical.phase?.stage ?? "GROUP" as const,
@@ -174,10 +202,11 @@ export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) 
           status: canonical.status,
           actualWinnerSide: canonical.actualWinnerSide,
           actualWinnerTeamId: canonical.actualWinnerTeamId,
+          firstLeg,
         }
       : legacy;
     if (!match) return { id: prediction.id, points: 0 };
-    const enabledMarkets = new Set(marketsForStage([...configuredMarkets], match.stage));
+    const enabledMarkets = new Set(marketsForStage([...configuredMarkets], match.stage, firstLeg));
 
     return {
       id: prediction.id,
@@ -200,7 +229,11 @@ export async function recalculateScoresInScope(db: DbClient, scope: Scope = {}) 
     const stage = answer.competitionMatch?.phase?.stage ?? answer.match?.stage ?? "GROUP";
     const ruleSet = rulesAtKickoff(answer.room, match.kickoffAt);
     const enabledMarkets = new Set(
-      marketsForStage(parseEnabledMarkets(ruleSet?.enabledMarkets), stage),
+      marketsForStage(
+        parseEnabledMarkets(ruleSet?.enabledMarkets),
+        stage,
+        firstLegs.has(match.id),
+      ),
     );
     const resultKey = answer.competitionMatchId ?? answer.matchId;
     return {

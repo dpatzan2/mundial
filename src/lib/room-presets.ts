@@ -352,8 +352,10 @@ const knockoutOnlyMarkets = new Set<RoomMarketKey>([
 export function marketsForStage(
   markets: RoomMarketKey[],
   stage: string,
+  firstLeg = false,
 ) {
-  return stage === "GROUP"
+  // En la ida de una llave nadie pasa y no hay tiempos extra ni penales: se juega como un partido normal.
+  return stage === "GROUP" || firstLeg
     ? markets.filter((market) => !knockoutOnlyMarkets.has(market))
     : markets;
 }
@@ -361,8 +363,9 @@ export function marketsForStage(
 export function bonusMarketsForStage(
   enabledMarkets: RoomMarketKey[],
   stage: string,
+  firstLeg = false,
 ) {
-  return bonusMarketsFor(marketsForStage(enabledMarkets, stage));
+  return bonusMarketsFor(marketsForStage(enabledMarkets, stage, firstLeg));
 }
 
 export function roomPresetDescription(preset: RoomConfigPreset) {
