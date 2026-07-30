@@ -205,7 +205,9 @@ export function KnockoutMatchScoreboard({
             </div>
           </div>
 
-          {displayOnly ? (
+          {match.firstLeg ? (
+            <p className="scoreboard-leg-note">Partido de ida · aqui todavia no pasa nadie</p>
+          ) : displayOnly ? (
             <div className="knockout-pick-grid readonly-grid">
               <div className={`knockout-option-body static${pickedHome ? " selected" : ""}`}>
                 <TeamLabel name={match.home} logoUrl={match.homeLogoUrl} />

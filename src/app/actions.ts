@@ -37,6 +37,7 @@ import {
   type RoomMarketKey,
 } from "@/lib/room-presets";
 import { parseAppDateTime } from "@/lib/timezone";
+import { firstLegMatchIds } from "@/lib/two-legged";
 
 function readInt(value: FormDataEntryValue | null) {
   if (typeof value !== "string" || value.trim() === "") return null;
@@ -1394,6 +1395,7 @@ export async function saveRoomPredictionsAction(
       ...match,
       stage: match.phase?.stage ?? "GROUP" as const,
     }));
+    const firstLegs = firstLegMatchIds(matches);
     const deadlineConfig = roomDeadlineConfig(room);
     const phaseDeadlines = computePhaseDeadlines(matches, new Date(), deadlineConfig);
     const enabledMarkets = parseEnabledMarkets(room.ruleSet?.enabledMarkets);
@@ -1437,8 +1439,10 @@ export async function saveRoomPredictionsAction(
           : null;
 
       const existingPred = predictionByMatch.get(match.id);
+      const firstLeg = firstLegs.has(match.id);
 
-      if (match.stage === "GROUP") {
+      // La ida de una llave se guarda como partido de grupos: solo marcador, nadie pasa.
+      if (match.stage === "GROUP" || firstLeg) {
         if (predictedHomeScore !== null && predictedAwayScore !== null) {
           const changed =
             !existingPred ||
@@ -1526,7 +1530,7 @@ export async function saveRoomPredictionsAction(
       // sin este guard cada guardado borraba los bonus del resto de partidos.
       const marketsInForm = formData.has(`marketsShown:${match.id}`);
 
-      for (const market of marketsInForm ? bonusMarketsForStage(enabledMarkets, match.stage) : []) {
+      for (const market of marketsInForm ? bonusMarketsForStage(enabledMarkets, match.stage, firstLeg) : []) {
         const value = readMarketValue(formData, market, match.id);
         const existingKey = `${match.id}:${market}`;
         const existingAnswer = answerByMatchAndMarket.get(existingKey);

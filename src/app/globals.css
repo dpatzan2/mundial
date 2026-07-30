@@ -2354,6 +2354,15 @@ input:disabled {
   font-weight: 600;
 }
 
+.scoreboard-leg-note {
+  margin: 0;
+  padding: 8px 14px 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 .scoreboard-body {
   width: 100%;
   max-width: 900px;

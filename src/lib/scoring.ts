@@ -12,6 +12,8 @@ type ScorableMatch = {
   status: "SCHEDULED" | "LIVE" | "FINISHED";
   actualWinnerSide: "HOME" | "AWAY" | null;
   actualWinnerTeamId: string | null;
+  /** Ida de una llave a doble partido: puntua como un partido de grupos, nadie pasa todavia. */
+  firstLeg?: boolean;
 };
 
 type ScorablePrediction = {
@@ -85,7 +87,7 @@ export function scorePrediction(
 ) {
   if (match.status !== "FINISHED") return 0;
 
-  if (match.stage === "GROUP") {
+  if (match.stage === "GROUP" || match.firstLeg) {
     if (
       match.homeScore === null ||
       match.awayScore === null ||
