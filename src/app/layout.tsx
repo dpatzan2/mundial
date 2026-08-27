@@ -8,6 +8,7 @@ import { logoutAction } from "@/app/actions";
 import { AppNav } from "@/components/AppNav";
 import { TopLoadingBar } from "@/components/TopLoadingBar";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export const metadata: Metadata = {
   title: "Previa",
@@ -53,6 +54,7 @@ export default async function RootLayout({
                   <span>Previa</span>
                 </Link>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <NotificationBell />
                   <ThemeSwitcher />
                   <form action={logoutAction}>
                     <button className="mobile-logout-button" type="submit">
@@ -74,7 +76,10 @@ export default async function RootLayout({
                 </Link>
                 <AppNav role={user.role} />
                 <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "14px" }}>
-                  <ThemeSwitcher />
+                  <div className="sidebar-utility-row" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <NotificationBell />
+                    <ThemeSwitcher />
+                  </div>
                   <form action={logoutAction} className="sidebar-footer" style={{ marginTop: 0 }}>
                     <span>{user.displayName}</span>
                     <button className="ghost-button" type="submit">
