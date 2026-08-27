@@ -187,6 +187,7 @@ export async function createCompetitionAction(formData: FormData) {
     countryCode: z.string().trim().max(8).optional(),
     logoUrl: z.string().trim().max(500).optional(),
     bannerUrl: z.string().trim().max(500).optional(),
+    apiFootballLeagueId: z.string().trim().optional(),
     startsAt: z.string().trim().optional(),
     endsAt: z.string().trim().optional(),
   });
@@ -198,6 +199,7 @@ export async function createCompetitionAction(formData: FormData) {
     countryCode: String(formData.get("countryCode") ?? ""),
     logoUrl: String(formData.get("logoUrl") ?? ""),
     bannerUrl: String(formData.get("bannerUrl") ?? ""),
+    apiFootballLeagueId: String(formData.get("apiFootballLeagueId") ?? ""),
     startsAt: String(formData.get("startsAt") ?? ""),
     endsAt: String(formData.get("endsAt") ?? ""),
   });
@@ -214,6 +216,7 @@ export async function createCompetitionAction(formData: FormData) {
       countryCode: parsed.data.countryCode || null,
       logoUrl: parsed.data.logoUrl || null,
       bannerUrl: parsed.data.bannerUrl || null,
+      apiFootballLeagueId: readInt(formData.get("apiFootballLeagueId")),
       startsAt: parseAppDateTime(parsed.data.startsAt),
       endsAt: parseAppDateTime(parsed.data.endsAt),
     },
@@ -657,6 +660,7 @@ export async function updateCompetitionAction(formData: FormData) {
     logoUrl: z.string().trim().max(500).optional(),
     bannerUrl: z.string().trim().max(500).optional(),
     championTeamId: z.string().trim().optional(),
+    apiFootballLeagueId: z.string().trim().optional(),
     startsAt: z.string().trim().optional(),
     endsAt: z.string().trim().optional(),
   });
@@ -670,6 +674,7 @@ export async function updateCompetitionAction(formData: FormData) {
     logoUrl: String(formData.get("logoUrl") ?? ""),
     bannerUrl: String(formData.get("bannerUrl") ?? ""),
     championTeamId: String(formData.get("championTeamId") ?? ""),
+    apiFootballLeagueId: String(formData.get("apiFootballLeagueId") ?? ""),
     startsAt: String(formData.get("startsAt") ?? ""),
     endsAt: String(formData.get("endsAt") ?? ""),
   });
@@ -686,6 +691,7 @@ export async function updateCompetitionAction(formData: FormData) {
       logoUrl: parsed.data.logoUrl || null,
       bannerUrl: parsed.data.bannerUrl || null,
       championTeamId: parsed.data.championTeamId || null,
+      apiFootballLeagueId: readInt(formData.get("apiFootballLeagueId")),
       startsAt: parseAppDateTime(parsed.data.startsAt),
       endsAt: parseAppDateTime(parsed.data.endsAt),
     },

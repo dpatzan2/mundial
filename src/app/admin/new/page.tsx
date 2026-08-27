@@ -71,6 +71,12 @@ export default async function NewCompetitionPage({
         </label>
 
         <label>
+          ID de liga en API-Football
+          <input name="apiFootballLeagueId" type="number" placeholder="Ej. 2 (Champions League)" />
+          <small>Solo si esta competencia se actualiza automaticamente vía n8n / API-Football.</small>
+        </label>
+
+        <label>
           Estado
           <select name="status" defaultValue="DRAFT">
             {competitionStatuses.map((status) => (

@@ -198,6 +198,16 @@ export default async function CompetitionDetailPage({
                 <input name="bannerUrl" type="url" defaultValue={competition.bannerUrl ?? ""} placeholder="https://..." />
               </label>
               <label>
+                ID de liga en API-Football
+                <input
+                  name="apiFootballLeagueId"
+                  type="number"
+                  defaultValue={competition.apiFootballLeagueId ?? ""}
+                  placeholder="Ej. 2 (Champions League)"
+                />
+                <small>Solo si esta competencia se actualiza automaticamente vía n8n / API-Football.</small>
+              </label>
+              <label>
                 Campeon oficial
                 <select name="championTeamId" defaultValue={competition.championTeamId ?? ""}>
                   <option value="">Aun no definido</option>
