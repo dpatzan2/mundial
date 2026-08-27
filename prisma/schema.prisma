@@ -97,6 +97,7 @@ model User {
   roomMembers            RoomMember[]
   roomLeaderboardEntries RoomLeaderboardEntry[]
   tournamentPicks        RoomTournamentPick[]
+  notificationRecipients NotificationRecipient[]
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 }
@@ -128,27 +129,28 @@ model Team {
 }
 
 model Competition {
-  id             String               @id @default(cuid())
-  name           String
-  slug           String               @unique
-  type           TournamentType
-  status         CompetitionStatus    @default(DRAFT)
-  season         String?
-  timezone       String               @default("America/Guatemala")
-  countryCode    String?
-  logoUrl        String?
-  bannerUrl      String?
-  startsAt       DateTime?
-  endsAt         DateTime?
-  championTeamId String?
-  championTeam   CompetitionTeam?     @relation("CompetitionChampion", fields: [championTeamId], references: [id], onDelete: SetNull)
-  phases         CompetitionPhase[]
-  teams          CompetitionTeam[]    @relation("CompetitionTeams")
-  matches        CompetitionMatch[]
-  rooms          Room[]
-  championPicks  RoomTournamentPick[]
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  id                  String               @id @default(cuid())
+  name                String
+  slug                String               @unique
+  type                TournamentType
+  status              CompetitionStatus    @default(DRAFT)
+  season              String?
+  timezone            String               @default("America/Guatemala")
+  countryCode         String?
+  logoUrl             String?
+  bannerUrl           String?
+  startsAt            DateTime?
+  endsAt              DateTime?
+  championTeamId      String?
+  apiFootballLeagueId Int?                 @unique
+  championTeam        CompetitionTeam?     @relation("CompetitionChampion", fields: [championTeamId], references: [id], onDelete: SetNull)
+  phases              CompetitionPhase[]
+  teams               CompetitionTeam[]    @relation("CompetitionTeams")
+  matches             CompetitionMatch[]
+  rooms               Room[]
+  championPicks       RoomTournamentPick[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@index([status])
   @@index([type])
@@ -214,6 +216,7 @@ model CompetitionMatch {
   awayScore          Int?
   actualWinnerSide   PickSide?
   actualWinnerTeamId String?
+  externalFixtureId  Int?                @unique
   competition        Competition         @relation(fields: [competitionId], references: [id], onDelete: Cascade)
   phase              CompetitionPhase?   @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   homeTeam           CompetitionTeam?    @relation("CompetitionHomeTeam", fields: [homeTeamId], references: [id])
@@ -222,6 +225,7 @@ model CompetitionMatch {
   predictions        Prediction[]
   predictionAnswers  PredictionAnswer[]
   marketResults      MatchMarketResult[]
+  notifications      Notification[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -289,6 +293,7 @@ model Room {
   predictionAnswers            PredictionAnswer[]
   leaderboardEntries           RoomLeaderboardEntry[]
   championPicks                RoomTournamentPick[]
+  notifications                Notification[]
   createdAt                    DateTime                     @default(now())
   updatedAt                    DateTime                     @updatedAt
 
@@ -454,4 +459,33 @@ model ScoringSettings {
   groupOutcomePoints    Int      @default(2)
   knockoutAdvancePoints Int      @default(3)
   updatedAt             DateTime @updatedAt
+}
+
+model Notification {
+  id                 String                  @id @default(cuid())
+  roomId             String
+  competitionMatchId String?
+  type               String                  @default("MATCH_RESULT")
+  title              String
+  body               String
+  room               Room                    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  competitionMatch   CompetitionMatch?       @relation(fields: [competitionMatchId], references: [id], onDelete: Cascade)
+  recipients         NotificationRecipient[]
+  createdAt          DateTime                @default(now())
+
+  @@index([roomId])
+  @@index([competitionMatchId])
+}
+
+model NotificationRecipient {
+  id             String       @id @default(cuid())
+  notificationId String
+  userId         String
+  readAt         DateTime?
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
 }
