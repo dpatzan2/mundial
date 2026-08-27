@@ -71,9 +71,9 @@ export default async function NewCompetitionPage({
         </label>
 
         <label>
-          ID de liga en API-Football
-          <input name="apiFootballLeagueId" type="number" placeholder="Ej. 2 (Champions League)" />
-          <small>Solo si esta competencia se actualiza automaticamente vía n8n / API-Football.</small>
+          Habilitar automatización de resultados
+          <input name="apiFootballLeagueId" type="number" placeholder="Ej. 1 (cualquier número habilita)" />
+          <small>Cualquier valor numérico habilita la actualización automática de resultados vía n8n para esta competencia.</small>
         </label>
 
         <label>

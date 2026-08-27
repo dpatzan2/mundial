@@ -4,16 +4,16 @@ import { prisma } from "@/lib/db";
 import { applyMatchResult, isFixtureFinished, verifyIntegrationSecret } from "@/lib/football-integration";
 
 const bodySchema = z.object({
-  fixture_id: z.number().int(),
+  match_id: z.string().min(1),
   home_score: z.number().int().min(0),
   away_score: z.number().int().min(0),
   status: z.string().min(1),
 });
 
 /**
- * Webhook final del flujo de n8n: se llama una vez que el partido ya termino (FT/AET/PEN).
- * Actualiza el marcador, recalcula puntos de todas las salas afectadas y genera las
- * notificaciones in-app de "Resultados actualizados".
+ * Variante de /result que identifica el partido por nuestro id interno en vez de un
+ * externalFixtureId de un proveedor de datos. La usa el flujo de n8n que resuelve el
+ * marcador via busqueda por IA (AI Agent + Tavily) en lugar de una API de futbol.
  */
 export async function POST(request: Request) {
   if (!verifyIntegrationSecret(request)) {
@@ -25,21 +25,13 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "INVALID_BODY", details: parsed.error.flatten() }, { status: 400 });
   }
-  const { fixture_id: fixtureId, home_score: homeScore, away_score: awayScore, status } = parsed.data;
+  const { match_id: matchId, home_score: homeScore, away_score: awayScore, status } = parsed.data;
 
   if (!isFixtureFinished(status)) {
     return NextResponse.json({ ignored: true, reason: "NOT_FINISHED" }, { status: 202 });
   }
 
-  const existing = await prisma.competitionMatch.findUnique({
-    where: { externalFixtureId: fixtureId },
-    select: { id: true },
-  });
-  if (!existing) {
-    return NextResponse.json({ error: "MATCH_NOT_FOUND" }, { status: 404 });
-  }
-
-  const outcome = await applyMatchResult(prisma, existing.id, homeScore, awayScore);
+  const outcome = await applyMatchResult(prisma, matchId, homeScore, awayScore);
   if ("error" in outcome) {
     return NextResponse.json(outcome, { status: 404 });
   }

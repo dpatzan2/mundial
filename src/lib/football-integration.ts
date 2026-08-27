@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { revalidatePath } from "next/cache";
+import type { PickSide, Prisma, PrismaClient } from "@prisma/client";
+import { recalculateScoresInScope } from "@/lib/score-recalculation";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
@@ -168,4 +170,116 @@ export async function notifyRoomsForMatch(
       },
     });
   }
+}
+
+export type ApplyMatchResultOutcome =
+  | { error: "MATCH_NOT_FOUND" }
+  | { updated: false; alreadyFinished: true; matchId: string }
+  | { updated: true; matchId: string };
+
+/**
+ * Aplica un resultado final a un CompetitionMatch por su id interno: actualiza marcador,
+ * recalcula puntos de las salas afectadas y genera las notificaciones in-app.
+ * Compartido por los dos webhooks de resultado (por externalFixtureId y por matchId directo).
+ */
+export async function applyMatchResult(
+  prisma: PrismaClient,
+  matchId: string,
+  homeScore: number,
+  awayScore: number,
+): Promise<ApplyMatchResultOutcome> {
+  const existing = await prisma.competitionMatch.findUnique({
+    where: { id: matchId },
+    select: { id: true, homeTeamId: true, awayTeamId: true, status: true, homeScore: true, awayScore: true },
+  });
+  if (!existing) return { error: "MATCH_NOT_FOUND" };
+
+  const alreadyProcessed =
+    existing.status === "FINISHED" && existing.homeScore === homeScore && existing.awayScore === awayScore;
+  if (alreadyProcessed) return { updated: false, alreadyFinished: true, matchId: existing.id };
+
+  const actualWinnerSide: PickSide | null =
+    homeScore === awayScore ? null : homeScore > awayScore ? "HOME" : "AWAY";
+  const actualWinnerTeamId =
+    actualWinnerSide === "HOME"
+      ? existing.homeTeamId
+      : actualWinnerSide === "AWAY"
+        ? existing.awayTeamId
+        : null;
+
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.competitionMatch.update({
+        where: { id: existing.id },
+        data: { homeScore, awayScore, status: "FINISHED", actualWinnerSide, actualWinnerTeamId },
+      });
+      await recalculateScoresInScope(tx, { matchId: existing.id });
+      await notifyRoomsForMatch(tx, existing.id, homeScore, awayScore);
+    },
+    { maxWait: 5_000, timeout: 20_000 },
+  );
+
+  revalidatePath("/admin");
+  revalidatePath("/calendar");
+  revalidatePath("/leaderboard");
+  revalidatePath("/dashboard");
+  revalidatePath("/rooms");
+
+  return { updated: true, matchId: existing.id };
+}
+
+export type PendingAutomatedMatch = {
+  matchId: string;
+  competitionName: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  kickoffAtUtc: string;
+};
+
+// Ventana hacia adelante: cubre "los partidos de hoy" sin importar a que hora del dia corra el cron.
+const PENDING_MATCH_HORIZON_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Partidos de competencias con automatizacion habilitada (apiFootballLeagueId seteado, ahora
+ * usado solo como bandera de opt-in, ya no para llamar a esa API) que ya arrancaron o arrancan
+ * dentro de las proximas 24h y todavia no tienen resultado. Fuente para el paso de busqueda por
+ * IA (n8n) en vez de resolver fixtures contra un proveedor externo.
+ */
+export async function getPendingAutomatedMatches(db: DbClient): Promise<PendingAutomatedMatch[]> {
+  const horizon = new Date(Date.now() + PENDING_MATCH_HORIZON_MS);
+
+  const competitions = await db.competition.findMany({
+    where: { apiFootballLeagueId: { not: null } },
+    select: {
+      name: true,
+      matches: {
+        where: { status: { not: "FINISHED" }, kickoffAt: { lte: horizon } },
+        select: {
+          id: true,
+          kickoffAt: true,
+          homePlaceholder: true,
+          awayPlaceholder: true,
+          homeTeam: { select: { name: true } },
+          awayTeam: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  const pending: PendingAutomatedMatch[] = [];
+  for (const competition of competitions) {
+    for (const match of competition.matches) {
+      const homeTeamName = match.homeTeam?.name ?? match.homePlaceholder;
+      const awayTeamName = match.awayTeam?.name ?? match.awayPlaceholder;
+      if (!match.kickoffAt || !homeTeamName || !awayTeamName) continue;
+      pending.push({
+        matchId: match.id,
+        competitionName: competition.name,
+        homeTeamName,
+        awayTeamName,
+        kickoffAtUtc: match.kickoffAt.toISOString(),
+      });
+    }
+  }
+  return pending;
 }
