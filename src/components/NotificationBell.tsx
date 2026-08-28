@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 
@@ -31,6 +31,7 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
+  const [align, setAlign] = useState<"left" | "right">("right");
   const containerRef = useRef<HTMLDivElement>(null);
 
   async function fetchNotifications() {
@@ -60,6 +61,20 @@ export function NotificationBell() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // El panel se abre hacia el lado donde hay espacio: si la campana esta pegada
+  // al borde derecho (header movil) abre hacia la izquierda, si esta pegada al
+  // borde izquierdo (sidebar) abre hacia la derecha.
+  useLayoutEffect(() => {
+    if (!open || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const panelWidth = Math.min(340, window.innerWidth * 0.88);
+    const spaceRight = window.innerWidth - rect.right;
+    const spaceLeft = rect.left;
+    if (spaceRight >= panelWidth) setAlign("left");
+    else if (spaceLeft >= panelWidth) setAlign("right");
+    else setAlign(spaceRight >= spaceLeft ? "left" : "right");
+  }, [open]);
 
   async function markRead(id: string) {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
@@ -95,7 +110,10 @@ export function NotificationBell() {
       </button>
 
       {open ? (
-        <div className="notification-bell-panel">
+        <div
+          className="notification-bell-panel"
+          style={align === "left" ? { left: 0, right: "auto" } : { right: 0, left: "auto" }}
+        >
           <div className="notification-bell-panel-head">
             <strong>Notificaciones</strong>
             {unreadCount > 0 ? (
