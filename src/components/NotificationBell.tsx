@@ -31,7 +31,11 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
-  const [align, setAlign] = useState<"left" | "right">("right");
+  const [placement, setPlacement] = useState<{
+    horizontal: "left" | "right";
+    vertical: "down" | "up";
+    maxHeight: number;
+  }>({ horizontal: "right", vertical: "down", maxHeight: 420 });
   const containerRef = useRef<HTMLDivElement>(null);
 
   async function fetchNotifications() {
@@ -62,18 +66,43 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // El panel se abre hacia el lado donde hay espacio: si la campana esta pegada
-  // al borde derecho (header movil) abre hacia la izquierda, si esta pegada al
-  // borde izquierdo (sidebar) abre hacia la derecha.
+  // El panel se abre hacia el lado y el sentido donde hay espacio: si la campana
+  // esta pegada al borde derecho (header movil) abre hacia la izquierda, si esta
+  // pegada al borde izquierdo (sidebar) abre hacia la derecha; si no hay lugar
+  // debajo (campana cerca del borde inferior) abre hacia arriba, y si tampoco
+  // alcanza el alto habitual, lo recorta al espacio real disponible (la lista
+  // interna ya tiene scroll propio).
   useLayoutEffect(() => {
     if (!open || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
+    const gap = 10;
+    const desiredHeight = 420;
+
     const panelWidth = Math.min(340, window.innerWidth * 0.88);
     const spaceRight = window.innerWidth - rect.right;
     const spaceLeft = rect.left;
-    if (spaceRight >= panelWidth) setAlign("left");
-    else if (spaceLeft >= panelWidth) setAlign("right");
-    else setAlign(spaceRight >= spaceLeft ? "left" : "right");
+    const horizontal: "left" | "right" =
+      spaceRight >= panelWidth ? "left" : spaceLeft >= panelWidth ? "right" : spaceRight >= spaceLeft ? "left" : "right";
+
+    const spaceBelow = window.innerHeight - rect.bottom - gap;
+    const spaceAbove = rect.top - gap;
+    let vertical: "down" | "up";
+    let maxHeight: number;
+    if (spaceBelow >= desiredHeight) {
+      vertical = "down";
+      maxHeight = desiredHeight;
+    } else if (spaceAbove >= desiredHeight) {
+      vertical = "up";
+      maxHeight = desiredHeight;
+    } else if (spaceBelow >= spaceAbove) {
+      vertical = "down";
+      maxHeight = Math.max(160, spaceBelow);
+    } else {
+      vertical = "up";
+      maxHeight = Math.max(160, spaceAbove);
+    }
+
+    setPlacement({ horizontal, vertical, maxHeight });
   }, [open]);
 
   async function markRead(id: string) {
@@ -112,7 +141,13 @@ export function NotificationBell() {
       {open ? (
         <div
           className="notification-bell-panel"
-          style={align === "left" ? { left: 0, right: "auto" } : { right: 0, left: "auto" }}
+          style={{
+            left: placement.horizontal === "left" ? 0 : "auto",
+            right: placement.horizontal === "right" ? 0 : "auto",
+            top: placement.vertical === "down" ? "calc(100% + 10px)" : "auto",
+            bottom: placement.vertical === "up" ? "calc(100% + 10px)" : "auto",
+            maxHeight: placement.maxHeight,
+          }}
         >
           <div className="notification-bell-panel-head">
             <strong>Notificaciones</strong>
