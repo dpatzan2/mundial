@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 
@@ -27,16 +28,21 @@ function relativeTime(iso: string) {
   return `hace ${days} d`;
 }
 
+type PanelCoords = {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+  maxHeight: number;
+};
+
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
-  const [placement, setPlacement] = useState<{
-    horizontal: "left" | "right";
-    vertical: "down" | "up";
-    maxHeight: number;
-  }>({ horizontal: "right", vertical: "down", maxHeight: 420 });
+  const [coords, setCoords] = useState<PanelCoords | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   async function fetchNotifications() {
     try {
@@ -58,51 +64,67 @@ export function NotificationBell() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // El panel se abre hacia el lado y el sentido donde hay espacio: si la campana
-  // esta pegada al borde derecho (header movil) abre hacia la izquierda, si esta
-  // pegada al borde izquierdo (sidebar) abre hacia la derecha; si no hay lugar
-  // debajo (campana cerca del borde inferior) abre hacia arriba, y si tampoco
-  // alcanza el alto habitual, lo recorta al espacio real disponible (la lista
-  // interna ya tiene scroll propio).
+  // El panel se renderiza en un portal a document.body (position: fixed, coordenadas
+  // en pixeles de viewport) en vez de quedar anidado en el header/sidebar: asi evita
+  // que un ancestro con overflow:hidden (el header movil, position:fixed y overflow
+  // hidden por diseno) lo recorte, que era la causa de que no se viera en mobile.
+  // Se abre hacia el lado y el sentido donde hay espacio real disponible, y si ni
+  // arriba ni abajo alcanza el alto habitual (420px) recorta al espacio disponible
+  // (la lista interna ya tiene scroll propio).
   useLayoutEffect(() => {
     if (!open || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const gap = 10;
-    const desiredHeight = 420;
 
-    const panelWidth = Math.min(340, window.innerWidth * 0.88);
-    const spaceRight = window.innerWidth - rect.right;
-    const spaceLeft = rect.left;
-    const horizontal: "left" | "right" =
-      spaceRight >= panelWidth ? "left" : spaceLeft >= panelWidth ? "right" : spaceRight >= spaceLeft ? "left" : "right";
+    function computeCoords() {
+      const rect = containerRef.current!.getBoundingClientRect();
+      const gap = 10;
+      const desiredHeight = 420;
+      const panelWidth = Math.min(340, window.innerWidth * 0.88);
 
-    const spaceBelow = window.innerHeight - rect.bottom - gap;
-    const spaceAbove = rect.top - gap;
-    let vertical: "down" | "up";
-    let maxHeight: number;
-    if (spaceBelow >= desiredHeight) {
-      vertical = "down";
-      maxHeight = desiredHeight;
-    } else if (spaceAbove >= desiredHeight) {
-      vertical = "up";
-      maxHeight = desiredHeight;
-    } else if (spaceBelow >= spaceAbove) {
-      vertical = "down";
-      maxHeight = Math.max(160, spaceBelow);
-    } else {
-      vertical = "up";
-      maxHeight = Math.max(160, spaceAbove);
+      const spaceRight = window.innerWidth - rect.right;
+      const spaceLeft = rect.left;
+      const next: PanelCoords = { maxHeight: desiredHeight };
+
+      if (spaceRight >= panelWidth) {
+        next.left = rect.left;
+      } else if (spaceLeft >= panelWidth) {
+        next.right = spaceRight;
+      } else if (spaceRight >= spaceLeft) {
+        next.left = Math.max(gap, window.innerWidth - panelWidth - gap);
+      } else {
+        next.right = Math.max(gap, spaceRight);
+      }
+
+      const spaceBelow = window.innerHeight - rect.bottom - gap;
+      const spaceAbove = rect.top - gap;
+      if (spaceBelow >= desiredHeight) {
+        next.top = rect.bottom + gap;
+        next.maxHeight = desiredHeight;
+      } else if (spaceAbove >= desiredHeight) {
+        next.bottom = window.innerHeight - rect.top + gap;
+        next.maxHeight = desiredHeight;
+      } else if (spaceBelow >= spaceAbove) {
+        next.top = rect.bottom + gap;
+        next.maxHeight = Math.max(160, spaceBelow);
+      } else {
+        next.bottom = window.innerHeight - rect.top + gap;
+        next.maxHeight = Math.max(160, spaceAbove);
+      }
+
+      setCoords(next);
     }
 
-    setPlacement({ horizontal, vertical, maxHeight });
+    computeCoords();
+    window.addEventListener("resize", computeCoords);
+    return () => window.removeEventListener("resize", computeCoords);
   }, [open]);
 
   async function markRead(id: string) {
@@ -138,51 +160,56 @@ export function NotificationBell() {
         {unreadCount > 0 ? <span className="notification-bell-badge">{unreadCount > 9 ? "9+" : unreadCount}</span> : null}
       </button>
 
-      {open ? (
-        <div
-          className="notification-bell-panel"
-          style={{
-            left: placement.horizontal === "left" ? 0 : "auto",
-            right: placement.horizontal === "right" ? 0 : "auto",
-            top: placement.vertical === "down" ? "calc(100% + 10px)" : "auto",
-            bottom: placement.vertical === "up" ? "calc(100% + 10px)" : "auto",
-            maxHeight: placement.maxHeight,
-          }}
-        >
-          <div className="notification-bell-panel-head">
-            <strong>Notificaciones</strong>
-            {unreadCount > 0 ? (
-              <button type="button" className="notification-bell-mark-all" onClick={markAllRead}>
-                Marcar todas como leidas
-              </button>
-            ) : null}
-          </div>
-          <div className="notification-bell-list">
-            {notifications.length === 0 ? (
-              <p className="notification-bell-empty">Sin notificaciones por ahora.</p>
-            ) : (
-              notifications.map((notification) => (
-                <Link
-                  key={notification.id}
-                  href={`/rooms/${notification.roomId}/leaderboard`}
-                  className={`notification-bell-item${notification.read ? "" : " unread"}`}
-                  onClick={() => {
-                    if (!notification.read) markRead(notification.id);
-                    setOpen(false);
-                  }}
-                >
-                  <div className="notification-bell-item-head">
-                    <span>{notification.title}</span>
-                    <small>{relativeTime(notification.createdAt)}</small>
-                  </div>
-                  <p>{notification.body}</p>
-                  <small className="notification-bell-room">{notification.roomName}</small>
-                </Link>
-              ))
-            )}
-          </div>
-        </div>
-      ) : null}
+      {open && coords
+        ? createPortal(
+            <div
+              ref={panelRef}
+              className="notification-bell-panel"
+              style={{
+                position: "fixed",
+                top: coords.top ?? "auto",
+                bottom: coords.bottom ?? "auto",
+                left: coords.left ?? "auto",
+                right: coords.right ?? "auto",
+                maxHeight: coords.maxHeight,
+              }}
+            >
+              <div className="notification-bell-panel-head">
+                <strong>Notificaciones</strong>
+                {unreadCount > 0 ? (
+                  <button type="button" className="notification-bell-mark-all" onClick={markAllRead}>
+                    Marcar todas como leidas
+                  </button>
+                ) : null}
+              </div>
+              <div className="notification-bell-list">
+                {notifications.length === 0 ? (
+                  <p className="notification-bell-empty">Sin notificaciones por ahora.</p>
+                ) : (
+                  notifications.map((notification) => (
+                    <Link
+                      key={notification.id}
+                      href={`/rooms/${notification.roomId}/leaderboard`}
+                      className={`notification-bell-item${notification.read ? "" : " unread"}`}
+                      onClick={() => {
+                        if (!notification.read) markRead(notification.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <div className="notification-bell-item-head">
+                        <span>{notification.title}</span>
+                        <small>{relativeTime(notification.createdAt)}</small>
+                      </div>
+                      <p>{notification.body}</p>
+                      <small className="notification-bell-room">{notification.roomName}</small>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
